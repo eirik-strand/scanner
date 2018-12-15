@@ -9,19 +9,20 @@ using namespace cv;
 
 ros::NodeHandle * nh;
 Mat image;
-int alpha_slider = 0;
-int alpha_slider2 = 255;
+int rl = 110;
+int gl = 30;
+int bl = 30;
 
-int alpha_slider3 = 100;
-int alpha_slider4 = 170;
-int alpha_slider5 = 255;
-int alpha_slider6 = 255;
+int rh = 150;
+int gh = 95;
+int bh = 95;
 
 double alpha;
 double beta;
 
 Mat src1;
 Mat src2;
+string window_name = "katt";
 
 //Wht does line classifiers need
 int min_num_pixels;
@@ -40,12 +41,7 @@ cv::Scalar upper_color_range(0,255,255);
 Mat src, src_gray;
 Mat dst, detected_edges, dst2;
 
-int edgeThresh = 1;
-int lowThreshold;
-int const max_lowThreshold = 100;
-int ratio = 3;
-int kernel_size = 3;
-char* window_name = "Edge Map";
+
 
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr img_to_cloud(
@@ -59,19 +55,29 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr img_to_cloud(
         for (int x=0;x<image.cols;x++)
         {
             pcl::PointXYZRGB point;
-            point.x = coords.at<double>(0,y*image.cols+x);
-            point.y = coords.at<double>(1,y*image.cols+x);
-            point.z = coords.at<double>(2,y*image.cols+x);
+
 
             cv::Vec3b color = image.at<cv::Vec3b>(cv::Point(x,y));
-            uint8_t r = (color[2]);
-            uint8_t g = (color[1]);
-            uint8_t b = (color[0]);
+            int r = (color[2]);
+            int g = (color[1]);
+            int b = (color[0]);
+
+            if(g == 0) {
+                point.x = coords.at<double>(0,y*image.cols+x);
+                point.y = coords.at<double>(1,y*image.cols+x);
+                point.z = coords.at<double>(2,y*image.cols+x) + 1;
+            }else {
+                point.x = coords.at<double>(0,y*image.cols+x);
+                point.y = coords.at<double>(1,y*image.cols+x);
+                point.z = coords.at<double>(2,y*image.cols+x);
+            }
 
             int32_t rgb = (r << 16) | (g << 8) | b;
             point.rgb = *reinterpret_cast<float*>(&rgb);
+            if((r+g+b)!= 0){
+                cloud->points.push_back(point);
+            }
 
-            cloud->points.push_back(point);
         }
     }
     return cloud;
@@ -79,94 +85,20 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr img_to_cloud(
 
 
 
-static void on_trackbar( int, void* )
-{
-    alpha = (double) alpha_slider/255 ;
-    beta = ( 1.0 - alpha );
-    cv::inRange(image, cv::Scalar(alpha_slider, alpha_slider3, alpha_slider4), cv::Scalar(alpha_slider2, alpha_slider5, alpha_slider6), dst);
-
-    imshow( "Display window2", dst );
-}
-
-
-static void on_trackbar2( int, void* )
-{
-    alpha = (double) alpha_slider/255 ;
-    beta = ( 1.0 - alpha );
-    cv::inRange(image, cv::Scalar(alpha_slider, alpha_slider3, alpha_slider4), cv::Scalar(alpha_slider2, alpha_slider5, alpha_slider6), dst);
-
-    imshow( "Display window2", dst );
-}
-
-
-static void on_trackbar3( int, void* )
-{
-    alpha = (double) alpha_slider/255 ;
-    beta = ( 1.0 - alpha );
-    cv::inRange(image, cv::Scalar(alpha_slider, alpha_slider3, alpha_slider4), cv::Scalar(alpha_slider2, alpha_slider5, alpha_slider6), dst);
-
-    imshow( "Display window2", dst );
-}
-
-
-static void on_trackbar4( int, void* )
-{
-    alpha = (double) alpha_slider/255 ;
-    beta = ( 1.0 - alpha );
-    cv::inRange(image, cv::Scalar(alpha_slider, alpha_slider3, alpha_slider4), cv::Scalar(alpha_slider2, alpha_slider5, alpha_slider6), dst);
-
-    imshow( "Display window2", dst );
-}
-
-
-static void on_trackbar5( int, void* )
-{
-    alpha = (double) alpha_slider/255 ;
-    beta = ( 1.0 - alpha );
-    cv::inRange(image, cv::Scalar(alpha_slider, alpha_slider3, alpha_slider4), cv::Scalar(alpha_slider2, alpha_slider5, alpha_slider6), dst);
-
-    imshow( "Display window2", dst );
-}
-
-
-static void on_trackbar6( int, void* )
-{
-    alpha = (double) alpha_slider/255 ;
-    beta = ( 1.0 - alpha );
-    cv::inRange(image, cv::Scalar(alpha_slider, alpha_slider3, alpha_slider4), cv::Scalar(alpha_slider2, alpha_slider5, alpha_slider6), dst);
-
-    imshow( "Display window2", dst );
-}
-
-void CannyThreshold(int, void*)
-{
-    /// Reduce noise with a kernel 3x3
-    //cvtColor( dst, src_gray, CV_BGR2GRAY );
-
-    blur( src_gray, detected_edges, Size(3,3) );
-
-    /// Canny detector
-    Canny( detected_edges, detected_edges, lowThreshold, lowThreshold*ratio, kernel_size );
-
-    /// Using Canny's output as a mask, we display our result
-    dst2.create( src.size(), src.type() );
-
-    dst2 = Scalar::all(0);
-
-    src.copyTo( dst2, detected_edges);
-    imshow( window_name, dst2 );
-}
-
 
 int main(int argc, char **argv) {
 
     ros::init(argc, argv, "nscan");
     nh = new ros::NodeHandle("nscan");
 
+    namedWindow( window_name, WINDOW_NORMAL );
+    cv::resizeWindow(window_name, 1000, 1000);
+
     src = imread(argv[1], CV_LOAD_IMAGE_COLOR);   // Read the file
     cv::resize(src, src, cv::Size(src.rows,src.rows), 0, 0, CV_INTER_LINEAR);
 
     image = src;
+    image.convertTo(image, -1, 0.5, 0);
     if(! image.data )                              // Check for invalid input
     {
         cout <<  "Could not open or find the image" << std::endl ;
@@ -189,25 +121,23 @@ int main(int argc, char **argv) {
 
 
 
+
     cv::Mat hsv_image;
     cv::cvtColor(image, hsv_image, cv::COLOR_BGR2HSV);
+
+    //imshow(window_name, image);
+
 
     // Threshold the HSV image, keep only the red pixels
     cv::Mat lower_red_hue_range;
     cv::Mat upper_red_hue_range;
-    cv::inRange(hsv_image, cv::Scalar(alpha_slider, alpha_slider3, alpha_slider4), cv::Scalar(alpha_slider2, alpha_slider5, alpha_slider6), lower_red_hue_range);
-
-    //image = lower_red_hue_range;
-    namedWindow( window_name, WINDOW_NORMAL );
-    cv::resizeWindow(window_name, 1000, 1000);
+    cv::inRange(image, cv::Scalar(bl, gl, rl), cv::Scalar(bh, gh, rh), lower_red_hue_range);
 
 
 
 
-    string text = "Funny text inside the box";
-    int fontFace = FONT_HERSHEY_SCRIPT_SIMPLEX;
-    double fontScale = 2;
-    int thickness = 8;
+
+
 
     Mat img;
     cv::cvtColor(lower_red_hue_range, img, cv::COLOR_GRAY2BGR);
@@ -257,31 +187,17 @@ int main(int argc, char **argv) {
 
 
 
+    cv::Mat cloud_image = img;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    /*
-    cv::Mat coords(3, image.cols * image.rows, CV_64FC1);
+    cv::Mat coords(3, cloud_image.cols * cloud_image.rows, CV_64FC1);
     for (int col = 0; col < coords.cols; ++col)
     {
-        coords.at<double>(0, col) = col % image.cols;
-        coords.at<double>(1, col) = col / image.cols;
-        coords.at<double>(2, col) = 10;
+        coords.at<double>(0, col) = ((col % cloud_image.cols))/1000.0;
+        coords.at<double>(1, col) = ((col / cloud_image.cols))/1000.0;
+        coords.at<double>(2, col) = 2;
     }
 
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = img_to_cloud(image, coords);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = img_to_cloud(cloud_image, coords);
 
 
     sensor_msgs::PointCloud2 trump;
@@ -295,16 +211,15 @@ int main(int argc, char **argv) {
     while (ros::ok()){
         cloudpup.publish(trump);
 
-        ros::Duration(1).sleep();
+        ros::Duration(5).sleep();
         ros::spinOnce();
     }
 
 
     delete nh;
-    ros::spin();
 
 
-    */
+
 
     return 0;
 }
