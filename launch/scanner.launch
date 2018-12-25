@@ -1,0 +1,7 @@
+<launch>
+<node name="scanner" pkg="scanner" type="scanner.py"/>
+
+<node name="world2camera" pkg="tf2_ros" type="static_transform_publisher" args="0 0 2 0 0 0 world camera"/>
+<node name="world2laser" pkg="tf2_ros" type="static_transform_publisher" args="0 0.32 0 -0.26 0 0 camera laser"/>
+
+</launch>
