@@ -12,7 +12,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 SET(OpenCV_DIR /home/e/opencv)
 
+find_package(CUDA REQUIRED)
+IF(CUDA_FOUND)
+    SET(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-O3 -gencode arch=compute_20,code=sm_20)
 
+    add_definitions(-DGPU_OPENCV_ENABLE)
+ENDIF()
 
 find_package(catkin REQUIRED COMPONENTS
   pcl_conversions
@@ -32,12 +37,13 @@ catkin_package(
 find_package(OpenCV)
 include_directories(${OpenCV_INCLUDE_DIRS})
 include_directories(${catkin_INCLUDE_DIRS} )
+include_directories(${cuda_INCLUDE_DIRS} )
 
 add_executable(scanner src/scanner.cpp include/scanner.h)
 
 
 
-target_link_libraries(scanner ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+target_link_libraries(scanner ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${cuda_LIBRARIES})
 
 
 

@@ -5,14 +5,15 @@
 #include <iostream>
 
 
+using namespace std;
+using namespace cv;
+
 #include <tf2_ros/static_transform_broadcaster.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <cstdio>
 #include <tf2/LinearMath/Quaternion.h>
 
 
-using namespace std;
-using namespace cv;
 
 double laser_angle;
 
@@ -45,6 +46,8 @@ int max_num_pixels;
 cv::Scalar lower_color_range(0,255,255);
 cv::Scalar upper_color_range(0,255,255);
 
+
+ros::Publisher cloudpup;
 // a distance to pixel number sanity check. This must be calibrated
 // Surrounding color compensation, for pixels to match
 // light intensity compensation
@@ -54,6 +57,9 @@ cv::Scalar upper_color_range(0,255,255);
 
 Mat src, src_gray;
 Mat dst, detected_edges, dst2;
+
+double start;
+
 
 int row_filter(std::vector<double > pixels){
     int sum = 0;
@@ -70,14 +76,15 @@ int row_filter(std::vector<double > pixels){
 }
 
 
+
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr img_to_cloud(
         const cv::Mat& image,
         const cv::Mat &coords)
 {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>());
-    std::cout << "size: " << depths.size() << std::endl;
-    std::cout << "sizer: " << image.rows << std::endl;
-    std::cout << "sizec: " << image.cols << std::endl;
+    //std::cout << "size: " << depths.size() << std::endl;
+    //std::cout << "sizer: " << image.rows << std::endl;
+    //std::cout << "sizec: " << image.cols << std::endl;
 
     for (int y=0;y<image.rows;y++){
         for (int x=0;x<image.cols;x++){
@@ -92,15 +99,15 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr img_to_cloud(
 
             point.x = coords.at<double>(0,y*image.cols+x);
             point.y = coords.at<double>(1,y*image.cols+x);
-            point.z = depths[y];
+            point.z = 1;
 
 
             int32_t rgb = (r << 16) | (g << 8) | b;
             point.rgb = *reinterpret_cast<float*>(&rgb);
 
-            if((r+g+b)!= 0 && point.z >0){
-                cloud->points.push_back(point);
-            }
+
+            cloud->points.push_back(point);
+
 
 
 
@@ -118,6 +125,109 @@ std::vector<cv::Vec4i> extractAllLines(const cv::Mat& image, int threshold, doub
     return lines;
 }
 
+
+// Define a pixel
+typedef Point3_<uint8_t> Pixel;
+
+
+struct Operator
+{
+    void operator ()(Pixel &pixel, const int * position) const
+    {
+
+    }
+};
+
+
+void video_test(){
+    VideoCapture cap(0);
+
+  // Check if camera opened successfully
+  if(!cap.isOpened()){
+    cout << "Error opening video stream or file" << endl;
+    return ;
+  }
+
+  double expo = 0.25;
+  std::cout << "MJPG: " << cap.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
+  cap.set(CV_CAP_PROP_FRAME_WIDTH,640);
+  cap.set(CV_CAP_PROP_FRAME_HEIGHT,480);
+  cap.set(CV_CAP_PROP_FPS, 10);
+  cap.set(CV_CAP_PROP_AUTO_EXPOSURE, false);
+  cap.set(CV_CAP_PROP_EXPOSURE, 500);
+  cap.set(CV_CAP_PROP_GAIN, 0);
+  double last_time = ros::Time::now().toSec();
+  double now = last_time;
+  Mat frame;
+  while(ros::ok()){
+
+      cap >> frame;
+      if (frame.empty())
+          break;
+
+
+      now = ros::Time::now().toSec();
+      double time_duratinon = 1.0/(now-last_time);
+      //double num_pixels = frame.rows*frame.cols;
+      //ROS_INFO("FPS: %f", time_duratinon);
+
+      last_time = now;
+      int ro= frame.rows/2;
+      int co = frame.cols/2;
+      cv::Vec3b color = frame.at<cv::Vec3b>(cv::Point(co,ro));
+      int katt = color[0]+color[1]+color[2];
+      ROS_INFO_STREAM(katt);
+
+    // Capture frame-by-frame
+
+
+    // If the frame is empty, break immediately
+
+    // Display the resulting frame
+
+    // Press  ESC on keyboard to exit
+
+    int *i = 0;
+
+    //frame.forEach<Pixel>(Operator());
+    imshow(window_name, frame);
+    if (waitKey(5) >= 0)
+        break;
+
+
+      cv::Mat cloud_image = frame;
+      //cv::cvtColor(frame, cloud_image, cv::COLOR_GRAY2BGR);
+
+      cv::Mat coords(3, cloud_image.cols * cloud_image.rows, CV_64FC1);
+      for (int col = 0; col < coords.cols; ++col) {
+          coords.at<double>(0, col) = ((col % cloud_image.cols)) / 1000.0;
+          coords.at<double>(1, col) = ((col / cloud_image.cols)) / 1000.0;
+          coords.at<double>(2, col) = 2;
+      }
+
+      pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = img_to_cloud(cloud_image, coords);
+
+
+      sensor_msgs::PointCloud2 trump;
+      pcl::toROSMsg(*cloud, trump);
+      trump.header.frame_id = "laser";
+
+
+      cloudpup.publish(trump);
+
+    }
+
+
+
+
+
+  // When everything done, release the video capture object
+  cap.release();
+
+  // Closes all the frames
+  destroyAllWindows();
+
+}
 void init_transforms(){
 
     static tf2_ros::StaticTransformBroadcaster static_broadcaster;
@@ -163,8 +273,15 @@ int main(int argc, char **argv) {
     ros::init(argc, argv, "nscan");
     nh = new ros::NodeHandle("nscan");
     init_transforms();
-    //namedWindow( window_name, WINDOW_NORMAL );
-    //cv::resizeWindow(window_name, 1000, 1000);
+    namedWindow( window_name, WINDOW_NORMAL );
+    cv::resizeWindow(window_name, 1000, 1000);
+
+    start = ros::Time::now().toSec();
+    cloudpup = nh->advertise<sensor_msgs::PointCloud2>("scan", 0);
+
+    video_test();
+    return 0;
+
 
     src = imread(argv[1], CV_LOAD_IMAGE_COLOR);   // Read the file
 
@@ -282,7 +399,7 @@ int main(int argc, char **argv) {
 
 
         ros::Publisher cloudpup = nh->advertise<sensor_msgs::PointCloud2>("scan", 2);
-
+        cloudpup.publish(trump);
 
         while (ros::ok()) {
             cloudpup.publish(trump);
