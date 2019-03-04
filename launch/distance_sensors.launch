@@ -1,0 +1,30 @@
+<launch>
+
+
+
+    <node name="distance_sensor0" pkg="distance_sensor" type="distance_sensor" output="screen" args="">
+      <param name="~port" value="/dev/ttyUSB1" type="string" />
+    </node>
+
+    <node name="distance_sensor1" pkg="distance_sensor" type="distance_sensor" output="screen" args="">
+      <param name="~port" value="/dev/ttyUSB2" type="string" />
+    </node>
+
+     <node name="distance_sensor2" pkg="distance_sensor" type="distance_sensor" output="screen" args="">
+        <param name="~port" value="/dev/ttyUSB3" type="string" />
+     </node>
+
+
+    <node name="blinking_bridge" pkg="rosserial_python" type="serial_node.py" output="screen" args="/dev/ttyACM0">
+    </node>
+
+
+
+
+  <node name="world2camera" pkg="tf2_ros" type="static_transform_publisher" args="1 0 0 0 0 0 world camera"/>
+  <node name="camera2sensor0" pkg="tf2_ros" type="static_transform_publisher" args="0.0 0.00 -0.017 0 -0.78 0 camera distance_sensor0"/>
+  <node name="camera2sensor1" pkg="tf2_ros" type="static_transform_publisher" args="0.0145 0 0.0145 0 -2.78 0 camera distance_sensor1"/>
+  <node name="camera2sensor2" pkg="tf2_ros" type="static_transform_publisher" args="-0.0145 0 0.0145 0 1.22 0 camera distance_sensor2"/>
+
+
+</launch>

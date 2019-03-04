@@ -1,0 +1,43 @@
+<robot
+  name="targetx">
+  <link
+    name="targetx">
+    <inertial>
+      <origin
+        xyz="0 9.18454765366783E-20 0.0015"
+        rpy="0 0 0" />
+      <mass
+        value="0.009075" />
+      <inertia
+        ixx="2.2944625E-06"
+        ixy="3.11334074840075E-22"
+        ixz="1.01818583629809E-24"
+        iyy="2.2944625E-06"
+        iyz="1.23003267106387E-22"
+        izz="4.5753125E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="1.5707963267949 0 0" />
+      <geometry>
+        <mesh
+          filename="package://Part1/meshes/Part1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="1.5707963267949 0 0" />
+      <geometry>
+        <mesh
+          filename="package://Part1/meshes/Part1.STL" />
+      </geometry>
+    </collision>
+  </link>
+</robot>
